@@ -384,8 +384,12 @@ dd{margin:0}
 .acts .pri{background:var(--amber);border-color:var(--amber);color:var(--on-accent)}
 .acts .pri:hover{color:var(--on-accent);filter:brightness(1.08)}
 .hint{font-size:14.5px;font-style:italic;color:var(--muted);margin:10px 0 0}
-.widget{margin-top:14px;border-radius:8px;overflow:hidden}
-.widget iframe{display:block;width:100%;height:160px;border:0}
+.widget{margin-top:14px;overflow:hidden}
+/* color-scheme normal : sinon, en mode sombre, le navigateur peint un fond blanc derrière le lecteur (visible dans les coins) */
+.widget iframe{display:block;width:100%;height:160px;border:0;color-scheme:normal;background:transparent}
+/* Spotify : hauteur exacte du lecteur compact, coins arrondis du lecteur, et pas de fond blanc en mode sombre */
+.widget.sp{border-radius:12px}
+.widget.sp iframe{height:152px}
 .acts{align-items:center;gap:14px}
 .acts .grp{display:inline-flex;gap:8px;align-items:center}
 .acts .ico{all:unset;box-sizing:border-box;cursor:pointer;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--field);color:var(--fg);transition:transform .15s,border-color .15s,color .15s}
@@ -1346,7 +1350,7 @@ function renderInfo(d){
     ${isWish(d)?giftBox(d):""}
     ${d.tracks.length?`<h3>Morceaux</h3><div class="sides">${sides.map(s=>{n=0;return `<div class="side"><h4>${sideName(s)}</h4><ol>${d.tracks.map((t,i)=>t.side===s?li(t,i):"").join("")}</ol></div>`}).join("")}</div>`:""}
     ${playable?`<div class="now" id="now"></div>`:""}
-    ${info?`<div class="widget" id="widget"><iframe title="Lecteur ${LNAME()}" loading="lazy" src="${widgetSrc(...dzMain(info),false)}" allow="autoplay; encrypted-media; clipboard-write"></iframe></div>`:""}
+    ${info?`<div class="widget${LECT==="spotify"?" sp":""}" id="widget"><iframe title="Lecteur ${LNAME()}" loading="lazy" src="${widgetSrc(...dzMain(info),false)}" allow="autoplay; encrypted-media; clipboard-write"></iframe></div>`:""}
     <details class="plus"${plusOpen?" open":""}><summary>Plus d'infos</summary>
     ${loading?`<p class="hint">Lecture de la fiche Discogs…</p>`:""}
     ${d.detailErr?`<p class="hint">Fiche Discogs indisponible : ${esc(d.detailErr)}</p>`:""}
@@ -1375,7 +1379,7 @@ function renderInfo(d){
 }
 
 /* ---------- Lecture : uniquement le lecteur intégré, Deezer ou Spotify (morceaux entiers avec un compte connecté) ---------- */
-const widgetSrc=(kind,id,auto)=>LECT==="spotify"?`https://open.spotify.com/embed/${kind}/${id}?utm_source=generator`:`https://widget.deezer.com/widget/light/${kind}/${id}?tracklist=false&radius=true${auto?"&autoplay=true":""}`;
+const widgetSrc=(kind,id,auto)=>LECT==="spotify"?`https://open.spotify.com/embed/${kind}/${id}?utm_source=generator`:`https://widget.deezer.com/widget/light/${kind}/${id}?tracklist=false&radius=false${auto?"&autoplay=true":""}`;
 // une iframe neuve à chaque lecture : Chrome n'accepte la lecture auto que dans un cadre créé après le clic
 function setWidget(kind,id,auto){
   const old=document.querySelector("#widget iframe"); if(!old) return;

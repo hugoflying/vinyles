@@ -80,7 +80,7 @@ Sans rien régler, la fiche d'un disque montre le lecteur **Deezer**. Pour avoir
 
 1. Sur https://developer.spotify.com/dashboard , se connecter avec un compte Spotify **Premium**
    (Spotify l'exige pour les petites applications), puis **Create app**.
-   Nom et description au choix, *Redirect URI* : `https://localhost` (pas utilisé), cocher **Web API**, puis **Save**.
+   Nom et description au choix, *Redirect URIs* : l'adresse du site, par exemple `https://vinyles.pages.dev/`, puis **Add** (pas utilisée, mais obligatoire ; Spotify refuse `localhost`), cocher **Web API**, puis **Save**.
 2. Dans l'application : **Settings**, copier le **Client ID**, puis **View client secret** et copier le **Client secret**.
 3. Sur Cloudflare, dans le projet Pages : **Settings → Variables and Secrets → Add**, type **Secret** :
    `SPOTIFY_CLIENT_ID` puis `SPOTIFY_CLIENT_SECRET`, avec les deux valeurs copiées.
