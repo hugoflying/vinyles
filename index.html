@@ -398,6 +398,22 @@ dd{margin:0}
 .radio .rplayer{border-radius:12px;overflow:hidden;height:152px}
 .radio iframe{display:block;width:100%;height:152px;border:0;color-scheme:normal;background:transparent}
 #radioBtn[aria-pressed="true"]{color:var(--amber)}
+/* carte réduite : hors de l'écran mais toujours là, pour que la musique continue */
+.radio.mini{opacity:0;pointer-events:none;transform:translateX(-300vw)}
+/* bandeau défilant façon RDS, tout en haut, sous la fiche d'un disque ouverte */
+.rds{position:fixed;z-index:46;top:0;left:0;right:0;height:calc(30px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px);display:flex;align-items:stretch;background:var(--fg);color:var(--night)}
+.rds[hidden]{display:none}
+body.rdsOn{padding-top:30px}
+body.rdsOn .radio,body.rdsOn .msheet{margin-top:30px}
+.rdsTxt{all:unset;cursor:pointer;flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding-left:12px}
+.rdsTag{flex:none;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;background:var(--amber);color:var(--on-accent,#fff);padding:3px 6px;font-weight:700}
+.rdsWin{flex:1;min-width:0;overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 24px),transparent)}
+.rdsRun{display:inline-flex;animation:rdsDefile 20s linear infinite;font-family:var(--f-mono);font-size:12.5px;letter-spacing:.04em}
+.rdsRun span{padding-right:64px}
+@keyframes rdsDefile{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.rdsBtn{all:unset;cursor:pointer;width:38px;display:grid;place-items:center;color:var(--night)}
+.rdsBtn:hover,.rdsTxt:hover .rdsRun{opacity:.75}
+@media (prefers-reduced-motion:reduce){.rdsRun{animation:none}.rdsRun span{padding-right:0}#rdsB{display:none}.rdsWin{text-overflow:ellipsis}}
 .widget.sp iframe{height:152px}
 .acts{align-items:center;gap:14px}
 .acts .grp{display:inline-flex;gap:8px;align-items:center}
@@ -755,10 +771,15 @@ body.partage #plusBtn,body.fiche #plusBtn{display:none!important}
   <div class="mrow mvue"><span class="mlbl">Vue</span><div id="mshVue" class="mval"></div></div>
   <div class="mrow mtools" id="mshTools"></div>
 </div>
+<div class="rds" id="rds" hidden role="status" aria-live="polite">
+  <button class="rdsTxt" id="rdsOpen" type="button" title="Afficher le lecteur de la radio"><span class="rdsTag">Radio</span><span class="rdsWin"><span class="rdsRun" id="rdsRun"><span id="rdsA"></span><span id="rdsB" aria-hidden="true"></span></span></span></button>
+  <button class="rdsBtn" id="rdsNext" type="button" aria-label="Morceau suivant" title="Morceau suivant"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 5.5v13l9-6.5zM17 5.5v13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg></button>
+  <button class="rdsBtn" id="rdsStop" type="button" aria-label="Arrêter la radio" title="Arrêter la radio"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+</div>
 <div class="radio" id="radio" hidden role="region" aria-label="Radio de la discothèque">
   <div class="rhead"><span class="mlbl">Radio · aléatoire</span><span class="rdisc" id="radioDisc"></span>
     <button class="lock" id="radioNext" type="button" aria-label="Morceau suivant" title="Morceau suivant"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 5.5v13l9-6.5zM17 5.5v13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg></button>
-    <button class="lock" id="radioStop" type="button" aria-label="Arrêter la radio" title="Arrêter la radio"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+    <button class="lock" id="radioMini" type="button" aria-label="Fermer (la radio continue)" title="Fermer (la radio continue)"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
   <div class="rplayer"><div id="radioEmbed"></div></div>
 </div>
 <div id="dbStat" role="status" title="Connexion à la base de données"><i></i><span>Base : vérification…</span></div>
@@ -1976,6 +1997,7 @@ async function radioPlay(p){
   if(!p){toast("Aucun morceau trouvé sur Spotify pour la radio.",true);radioStop();return}
   radio.cur=p; radio.ending=false;
   $("#radioDisc").textContent=`${p.d.artiste} · ${p.d.titre}`;
+  rdsSet(`${p.t.title} — ${p.d.artiste} · ${p.d.titre}${p.d.annee?` (${p.d.annee})`:""}`);
   const uri="spotify:track:"+p.t.id;
   if(radio.ctrl){radio.ctrl.loadUri(uri);radio.ctrl.play()}
   else{
@@ -1993,19 +2015,27 @@ async function radioPlay(p){
   }
   radioPrep();
 }
+function rdsSet(txt){
+  $("#rdsA").textContent=txt; $("#rdsB").textContent=txt;
+  const r=$("#rdsRun"); r.style.animationDuration=Math.max(10,txt.length*.28)+"s"; r.style.animation="none"; r.offsetWidth; r.style.animation="";
+}
+function radioMini(mini){$("#radio").classList.toggle("mini",mini)}
 async function radioNextTrack(){const n=radio.next||radioPick();radio.next=null;radioPlay(await n)}
 async function radioStart(){
-  radio.on=true; $("#radio").hidden=false; $("#radioBtn").setAttribute("aria-pressed","true"); mSheet(false);
+  radio.on=true; $("#radio").hidden=false; radioMini(false); $("#rds").hidden=false; document.body.classList.add("rdsOn"); rdsSet("Recherche d'un morceau…"); $("#radioBtn").setAttribute("aria-pressed","true"); mSheet(false);
   $("#radioDisc").textContent="Recherche d'un morceau…";
   try{radioPlay(await radioPick())}catch(e){toast(e.message,true);radioStop()}
 }
 function radioStop(){
-  radio.on=false; radio.next=null; $("#radio").hidden=true; $("#radioBtn").setAttribute("aria-pressed","false");
+  radio.on=false; radio.next=null; $("#radio").hidden=true; radioMini(false); $("#rds").hidden=true; document.body.classList.remove("rdsOn"); $("#radioBtn").setAttribute("aria-pressed","false");
   if(radio.ctrl){try{radio.ctrl.destroy()}catch(e){} radio.ctrl=null}
   $("#radio .rplayer").innerHTML='<div id="radioEmbed"></div>';
 }
 $("#radioBtn").addEventListener("click",()=>radio.on?radioStop():radioStart());
-$("#radioStop").addEventListener("click",radioStop);
+$("#rdsStop").addEventListener("click",radioStop);
+$("#radioMini").addEventListener("click",()=>radioMini(true));
+$("#rdsOpen").addEventListener("click",()=>radioMini(!$("#radio").classList.contains("mini")));
+$("#rdsNext").addEventListener("click",()=>{radio.ending=true;radioNextTrack()});
 $("#radioNext").addEventListener("click",()=>{radio.ending=true;radioNextTrack()});
 $("#radioDisc").addEventListener("click",()=>{if(radio.cur)openDetail(radio.cur.d)});
 
