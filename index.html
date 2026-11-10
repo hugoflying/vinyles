@@ -408,12 +408,14 @@ body.rdsOn .radio,body.rdsOn .msheet{margin-top:30px}
 .rdsTxt{all:unset;cursor:pointer;flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding-left:12px}
 .rdsTag{flex:none;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;background:var(--amber);color:var(--on-accent,#fff);padding:3px 6px;font-weight:700}
 .rdsWin{flex:1;min-width:0;overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 24px),transparent)}
-.rdsRun{display:inline-flex;animation:rdsDefile 20s linear infinite;font-family:var(--f-mono);font-size:12.5px;letter-spacing:.04em}
-.rdsRun span{padding-right:64px}
-@keyframes rdsDefile{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.rdsWin{position:relative;align-self:stretch;display:flex;align-items:center}
+/* défile sur toute la largeur, de droite à gauche */
+.rdsRun{display:inline-block;animation:rdsDefile 20s linear infinite;font-family:var(--f-mono);font-size:12.5px;letter-spacing:.04em}
+#rdsB{display:none}
+@keyframes rdsDefile{from{transform:translateX(var(--rds-from,100vw))}to{transform:translateX(-100%)}}
 .rdsBtn{all:unset;cursor:pointer;width:38px;display:grid;place-items:center;color:var(--night)}
 .rdsBtn:hover,.rdsTxt:hover .rdsRun{opacity:.75}
-@media (prefers-reduced-motion:reduce){.rdsRun{animation:none}.rdsRun span{padding-right:0}#rdsB{display:none}.rdsWin{text-overflow:ellipsis}}
+@media (prefers-reduced-motion:reduce){.rdsRun{animation:none;max-width:100%;overflow:hidden;text-overflow:ellipsis}}
 .widget.sp iframe{height:152px}
 .acts{align-items:center;gap:14px}
 .acts .grp{display:inline-flex;gap:8px;align-items:center}
@@ -2017,8 +2019,16 @@ async function radioPlay(p){
 }
 function rdsSet(txt){
   $("#rdsA").textContent=txt; $("#rdsB").textContent=txt;
-  const r=$("#rdsRun"); r.style.animationDuration=Math.max(10,txt.length*.28)+"s"; r.style.animation="none"; r.offsetWidth; r.style.animation="";
+  rdsFit(true);
 }
+// vitesse constante (environ 70 px par seconde), quelle que soit la largeur de l'écran
+function rdsFit(restart){
+  const r=$("#rdsRun"), w=$(".rdsWin").clientWidth; if(!w) return;
+  if(restart){r.style.animation="none"; r.offsetWidth; r.style.animation=""}
+  r.style.setProperty("--rds-from",w+"px");
+  r.style.animationDuration=Math.max(6,(w+r.scrollWidth)/70)+"s";
+}
+addEventListener("resize",()=>{if(radio.on)rdsFit(false)});
 function radioMini(mini){$("#radio").classList.toggle("mini",mini)}
 async function radioNextTrack(){const n=radio.next||radioPick();radio.next=null;radioPlay(await n)}
 async function radioStart(){
