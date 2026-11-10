@@ -631,6 +631,14 @@ body.rdsOn .radio,body.rdsOn .msheet{margin-top:30px}
 .sortsel,#chips{display:none!important}
 #mSheet .mrow[hidden]{display:none!important}
 .mtools{border-top:0!important;padding-top:0!important}
+#dbStat .dbico{display:none}
+/* Réglages : la base est un carré comme les autres boutons, icône base de données + point et cadre vert/rouge */
+.mtools #dbStat{inset:auto;width:44px;height:44px;box-sizing:border-box;padding:0;margin-left:0;gap:0;justify-content:center;position:relative;border-radius:0;background:var(--field);color:var(--fg)}
+.mtools #dbStat .dbico{display:block}
+.mtools #dbStat span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mtools #dbStat i{display:none}
+.mtools #dbStat.ok{border-color:#1fa64a}
+.mtools #dbStat.ko{border-color:#e2231a}
 /* dock repliable : seul le mode actif, se déplie au clic */
 .viewtog button{transition:width .28s cubic-bezier(.2,.8,.2,1),opacity .2s;overflow:hidden;flex-shrink:0}
 .viewtog:not(.deplie) button[aria-pressed="false"]{width:0!important;opacity:0;pointer-events:none}
@@ -784,7 +792,7 @@ body.partage #plusBtn,body.fiche #plusBtn{display:none!important}
     <button class="lock" id="radioMini" type="button" aria-label="Fermer (la radio continue)" title="Fermer (la radio continue)"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
   <div class="rplayer"><div id="radioEmbed"></div></div>
 </div>
-<div id="dbStat" role="status" title="Connexion à la base de données"><i></i><span>Base : vérification…</span></div>
+<div id="dbStat" role="status" title="Base : vérification…"><svg class="dbico" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="7" ry="2.8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5 5.5v13c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8v-13M5 12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8" fill="none" stroke="currentColor" stroke-width="1.7"/></svg><i></i><span>Base : vérification…</span></div>
 <script>
 const DISQUES = [
   {
@@ -1500,7 +1508,7 @@ async function syncNow(){
   }catch(err){toast(err.message==="Failed to fetch"?"Pas de connexion. Nouvel essai possible dans un instant.":err.message,true);if(err.message==="Failed to fetch")dbStatus("ko","Base injoignable");else checkDb()}
   finally{syncing=false}
 }
-function dbStatus(state,txt){const el=$("#dbStat");if(!el)return;el.className=state;el.querySelector("span").textContent=txt}
+function dbStatus(state,txt){const el=$("#dbStat");if(!el)return;el.className=state;el.title=txt;el.querySelector("span").textContent=txt}
 async function checkDb(){
   if(!location.protocol.startsWith("http")){dbStatus("ko","Base : hors ligne (fichier local)");return null}
   try{const r=await fetch("/api/disques",{cache:"no-store"});
