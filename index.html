@@ -877,8 +877,27 @@ async function tracksByTitle(d){
   return found.length?{albumId:null,cover:null,tracks:found}:null;
 }
 const dzMain=info=>info.albumId?["album",info.albumId]:["track",info.tracks[0].id];
+/* Lecteur choisi sur Cloudflare : Spotify si les secrets SPOTIFY_CLIENT_ID et SPOTIFY_CLIENT_SECRET existent, sinon Deezer */
+let LECT="deezer", lectP=null;
+const lecteur=()=>lectP??=(viaRelais?fetch("/api/spotify").then(r=>r.json()).then(j=>LECT=j.lecteur==="spotify"?"spotify":"deezer").catch(()=>LECT):Promise.resolve(LECT));
+const LNAME=()=>LECT==="spotify"?"Spotify":"Deezer";
+async function resolveSpotify(d){
+  const ask=async q=>{const r=await fetch("/api/spotify?"+new URLSearchParams(q));const j=await r.json();if(j.erreur)throw new Error(j.erreur);return j};
+  const art=d.artiste.split(/,| & | et | feat/i)[0];
+  const s=await ask({upc:String(d.ean||"").replace(/\D/g,""),artiste:art,titre:cleanT(d.titre)});
+  const c=(s.albums||[]).filter(x=>artistOk(d,(x.artistes||[])[0]));
+  const hit=c.find(x=>x.upc)||c.find(x=>normA(cleanT(x.titre))===normA(cleanT(d.titre)))||c.find(x=>titleOk(d,x.titre));
+  if(!hit) return null;
+  const a=(await ask({album:hit.id})).album;
+  return a&&a.morceaux&&a.morceaux.length?{albumId:a.id,cover:a.image||null,tracks:a.morceaux}:null;
+}
 async function resolveDeezer(d){
   if(dz[d.id]!==undefined) return dz[d.id];
+  if(await lecteur()==="spotify"){
+    if(dz[d.id]!==undefined) return dz[d.id];
+    try{const info=await resolveSpotify(d);dz[d.id]=info;setStatus(true);return info}
+    catch(e){dz[d.id]=null;if(state.deezer===null)setStatus(false);return null}
+  }
   try{
     let info=null;
     // 1. par code-barres (le plus fiable)
@@ -900,7 +919,7 @@ async function resolveDeezer(d){
 function setStatus(ok){
   if(state.deezer===true) return; state.deezer=ok;
   $("#status").classList.toggle("on",ok);
-  $("#status span").textContent=ok?"Deezer connecté":"Deezer injoignable ici, mode démo";
+  $("#status span").textContent=ok?`${LNAME()} connecté`:`${LNAME()} injoignable ici, mode démo`;
 }
 const norm=s=>String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\(.*?\)|\[.*?\]/g,"").replace(/[^a-z0-9]/g,"");
 function previewFor(d,i){
@@ -1307,7 +1326,7 @@ $("#pack").addEventListener("mousemove",e=>{const r=e.currentTarget.getBoundingC
 $("#pack").addEventListener("mouseleave",e=>{const t=e.currentTarget.querySelector(".tilt");t.style.removeProperty("--ry");t.style.removeProperty("--rx")});
 $("#pack").addEventListener("click",()=>{const d=state.cur;if(!d||!dz[d.id])return;if(state.track>=0)playAlbum()});
 
-const ICON={cart:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 4h2.2l2.1 10.2a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.2L20 8H6.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.5" fill="currentColor"/><circle cx="17" cy="19.5" r="1.5" fill="currentColor"/></svg>',play:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>',pause:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor"/></svg>',deezer:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 17h3v2H3zM7.5 14h3v5h-3zM12 11h3v8h-3zM16.5 7h3v12h-3z" fill="currentColor"/></svg>',disc:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M12 5.5a6.5 6.5 0 0 1 6.5 6.5" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".6"/></svg>',tag:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3.5 12.2V4.5h7.7l9.3 9.3-7.7 7.7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="8" cy="9" r="1.6" fill="currentColor"/></svg>',check:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',pencil:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 20l1-4.2L15.6 5.2a2 2 0 0 1 2.8 0l.4.4a2 2 0 0 1 0 2.8L8.2 19zM13.5 7.3l3.2 3.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',mb:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 7.5l8-4.5 8 4.5v9l-8 4.5-8-4.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 15V9.5l4 3 4-3V15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',trash:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'};
+const ICON={spotify:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7.5 9.6c3-1 6.4-.7 9 .8M8 12.6c2.5-.7 5.2-.4 7.3.8M8.6 15.4c1.9-.5 3.8-.3 5.4.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',cart:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 4h2.2l2.1 10.2a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.2L20 8H6.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.5" fill="currentColor"/><circle cx="17" cy="19.5" r="1.5" fill="currentColor"/></svg>',play:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>',pause:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor"/></svg>',deezer:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 17h3v2H3zM7.5 14h3v5h-3zM12 11h3v8h-3zM16.5 7h3v12h-3z" fill="currentColor"/></svg>',disc:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M12 5.5a6.5 6.5 0 0 1 6.5 6.5" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".6"/></svg>',tag:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3.5 12.2V4.5h7.7l9.3 9.3-7.7 7.7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="8" cy="9" r="1.6" fill="currentColor"/></svg>',check:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',pencil:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 20l1-4.2L15.6 5.2a2 2 0 0 1 2.8 0l.4.4a2 2 0 0 1 0 2.8L8.2 19zM13.5 7.3l3.2 3.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',mb:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 7.5l8-4.5 8 4.5v9l-8 4.5-8-4.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 15V9.5l4 3 4-3V15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',trash:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'};
 const sideName=s=>/^[A-H]$/.test(s)?`Face ${s}`:"Autres";
 const fmtAcq=v=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v||"");return m?new Date(+m[1],+m[2]-1,+m[3]).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"}):v};
 let plusOpen=false;
@@ -1327,7 +1346,7 @@ function renderInfo(d){
     ${isWish(d)?giftBox(d):""}
     ${d.tracks.length?`<h3>Morceaux</h3><div class="sides">${sides.map(s=>{n=0;return `<div class="side"><h4>${sideName(s)}</h4><ol>${d.tracks.map((t,i)=>t.side===s?li(t,i):"").join("")}</ol></div>`}).join("")}</div>`:""}
     ${playable?`<div class="now" id="now"></div>`:""}
-    ${info?`<div class="widget" id="widget"><iframe title="Lecteur Deezer" loading="lazy" src="${widgetSrc(...dzMain(info),false)}" allow="autoplay; encrypted-media; clipboard-write"></iframe></div>`:""}
+    ${info?`<div class="widget" id="widget"><iframe title="Lecteur ${LNAME()}" loading="lazy" src="${widgetSrc(...dzMain(info),false)}" allow="autoplay; encrypted-media; clipboard-write"></iframe></div>`:""}
     <details class="plus"${plusOpen?" open":""}><summary>Plus d'infos</summary>
     ${loading?`<p class="hint">Lecture de la fiche Discogs…</p>`:""}
     ${d.detailErr?`<p class="hint">Fiche Discogs indisponible : ${esc(d.detailErr)}</p>`:""}
@@ -1339,7 +1358,7 @@ function renderInfo(d){
     <div class="acts">
       ${isWish(d)?`<button class="ico big" id="gotBtn" type="button" aria-label="Je l'ai : passer dans ma collection" title="Je l'ai : passer dans ma collection">${ICON.check}</button>`:""}
       <span class="grp">
-      ${info?`<a class="ico" href="https://www.deezer.com/${dzMain(info).join("/")}" target="_blank" rel="noopener" aria-label="Ouvrir dans Deezer" title="Ouvrir dans Deezer">${ICON.deezer}</a>`:""}
+      ${info?`<a class="ico" href="${LECT==="spotify"?"https://open.spotify.com/":"https://www.deezer.com/"}${dzMain(info).join("/")}" target="_blank" rel="noopener" aria-label="Ouvrir dans ${LNAME()}" title="Ouvrir dans ${LNAME()}">${LECT==="spotify"?ICON.spotify:ICON.deezer}</a>`:""}
       ${d.discogsId?`<a class="ico" href="https://www.discogs.com/release/${d.discogsId}" target="_blank" rel="noopener" aria-label="Fiche Discogs" title="Fiche Discogs">${ICON.disc}</a>`:""}
       ${d.mbid?`<a class="ico" href="https://musicbrainz.org/release/${esc(d.mbid)}" target="_blank" rel="noopener" aria-label="Fiche MusicBrainz" title="Fiche MusicBrainz">${ICON.mb}</a>`:""}
       </span>
@@ -1355,8 +1374,8 @@ function renderInfo(d){
   if(rm) rm.addEventListener("click",()=>{if(rm.dataset.sure){removeRecord(d)}else{rm.dataset.sure="1";rm.classList.add("danger");$("#rmConf").hidden=false}});
 }
 
-/* ---------- Lecture : uniquement le lecteur Deezer intégré (morceaux entiers si tu es connecté à Deezer) ---------- */
-const widgetSrc=(kind,id,auto)=>`https://widget.deezer.com/widget/light/${kind}/${id}?tracklist=false&radius=true${auto?"&autoplay=true":""}`;
+/* ---------- Lecture : uniquement le lecteur intégré, Deezer ou Spotify (morceaux entiers avec un compte connecté) ---------- */
+const widgetSrc=(kind,id,auto)=>LECT==="spotify"?`https://open.spotify.com/embed/${kind}/${id}?utm_source=generator`:`https://widget.deezer.com/widget/light/${kind}/${id}?tracklist=false&radius=true${auto?"&autoplay=true":""}`;
 // une iframe neuve à chaque lecture : Chrome n'accepte la lecture auto que dans un cadre créé après le clic
 function setWidget(kind,id,auto){
   const old=document.querySelector("#widget iframe"); if(!old) return;
