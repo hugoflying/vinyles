@@ -2009,20 +2009,20 @@ async function radioPlay(p){
   $("#radioDisc").textContent=`${p.d.artiste} · ${p.d.titre}`;
   rdsSet(`${p.t.title} — ${p.d.artiste} · ${p.d.titre}${p.d.annee?` (${p.d.annee})`:""}`);
   const uri="spotify:track:"+p.t.id;
-  if(radio.ctrl){radio.ctrl.loadUri(uri);radio.ctrl.play()}
-  else{
-    const api=await spotifyApi(); if(!radio.on) return;
-    $("#radio .rplayer").innerHTML='<div id="radioEmbed"></div>';
-    api.createController($("#radioEmbed"),{uri,width:"100%",height:152},c=>{
-      radio.ctrl=c;
-      c.addListener("ready",()=>c.play());
-      let last=0;
-      c.addListener("playback_update",e=>{const x=e.data||{}, near=p=>x.duration>0&&p>=x.duration-900;
-        // fin du morceau (entier ou extrait) : on enchaîne
-        if(radio.on&&!radio.ending&&!x.isBuffering&&(near(x.position)||(x.isPaused&&x.position===0&&near(last)))){radio.ending=true;radioNextTrack()}
-        last=x.position||0});
-    });
-  }
+  // un lecteur neuf à chaque morceau : loadUri() ne change pas toujours le son du lecteur déjà lancé
+  const api=await spotifyApi(); if(!radio.on||radio.cur!==p) return;
+  if(radio.ctrl){try{radio.ctrl.destroy()}catch(e){} radio.ctrl=null}
+  $("#radio .rplayer").innerHTML='<div id="radioEmbed"></div>';
+  api.createController($("#radioEmbed"),{uri,width:"100%",height:152},c=>{
+    if(radio.cur!==p){try{c.destroy()}catch(e){} return}
+    radio.ctrl=c;
+    c.addListener("ready",()=>c.play());
+    let last=0;
+    c.addListener("playback_update",e=>{if(radio.ctrl!==c) return; const x=e.data||{}, near=v=>x.duration>0&&v>=x.duration-900;
+      // fin du morceau (entier ou extrait) : on enchaîne
+      if(radio.on&&!radio.ending&&!x.isBuffering&&(near(x.position)||(x.isPaused&&x.position===0&&near(last)))){radio.ending=true;radioNextTrack()}
+      last=x.position||0});
+  });
   radioPrep();
 }
 function rdsSet(txt){
