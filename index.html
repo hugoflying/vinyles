@@ -398,8 +398,9 @@ dd{margin:0}
 .radio .rplayer{border-radius:12px;overflow:hidden;height:152px}
 .radio iframe{display:block;width:100%;height:152px;border:0;color-scheme:normal;background:transparent}
 #radioBtn[aria-pressed="true"]{color:var(--amber)}
-/* carte réduite : hors de l'écran mais toujours là, pour que la musique continue */
-.radio.mini{opacity:0;pointer-events:none;transform:translateX(-300vw)}
+/* carte fermée : reste à sa place, invisible et derrière la page. Hors de l'écran, le navigateur
+   met le lecteur Spotify en veille et le morceau suivant ne joue pas. */
+.radio.mini{opacity:.01;pointer-events:none;z-index:-1}
 /* bandeau défilant façon RDS, tout en haut, sous la fiche d'un disque ouverte */
 .rds{position:fixed;z-index:46;top:0;left:0;right:0;height:calc(30px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px);display:flex;align-items:stretch;background:#141414;color:#eee;border-bottom:1px solid rgba(255,255,255,.1)}
 .rds[hidden]{display:none}
