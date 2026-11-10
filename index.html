@@ -401,7 +401,7 @@ dd{margin:0}
 /* carte réduite : hors de l'écran mais toujours là, pour que la musique continue */
 .radio.mini{opacity:0;pointer-events:none;transform:translateX(-300vw)}
 /* bandeau défilant façon RDS, tout en haut, sous la fiche d'un disque ouverte */
-.rds{position:fixed;z-index:46;top:0;left:0;right:0;height:calc(30px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px);display:flex;align-items:stretch;background:var(--fg);color:var(--night)}
+.rds{position:fixed;z-index:46;top:0;left:0;right:0;height:calc(30px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px);display:flex;align-items:stretch;background:#141414;color:#eee;border-bottom:1px solid rgba(255,255,255,.1)}
 .rds[hidden]{display:none}
 body.rdsOn{padding-top:30px}
 body.rdsOn .radio,body.rdsOn .msheet{margin-top:30px}
@@ -413,7 +413,7 @@ body.rdsOn .radio,body.rdsOn .msheet{margin-top:30px}
 .rdsRun{display:inline-block;animation:rdsDefile 20s linear infinite;font-family:var(--f-mono);font-size:12.5px;letter-spacing:.04em}
 #rdsB{display:none}
 @keyframes rdsDefile{from{transform:translateX(var(--rds-from,100vw))}to{transform:translateX(-100%)}}
-.rdsBtn{all:unset;cursor:pointer;width:38px;display:grid;place-items:center;color:var(--night)}
+.rdsBtn{all:unset;cursor:pointer;width:38px;display:grid;place-items:center;color:#eee}
 .rdsBtn:hover,.rdsTxt:hover .rdsRun{opacity:.75}
 @media (prefers-reduced-motion:reduce){.rdsRun{animation:none;max-width:100%;overflow:hidden;text-overflow:ellipsis}}
 .widget.sp iframe{height:152px}
